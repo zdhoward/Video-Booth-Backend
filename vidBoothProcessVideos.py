@@ -62,6 +62,11 @@ def main():
     # MAIN                #
     #######################
     #mainLog.write("Number of cpu : " + str(cpu_count()) + '\n')
+    # create required folders if they do not exist
+    folders = ['Archive', 'Assets', 'Assets/Audio', 'Assets/IntroCards', 'Assets/OutroCards', 'Captures', 'Finals']
+    for folder in folders:
+        createFolder(folder)
+
     if (verbose):
         print("Number of cpu : ", cpu_count())
     dir = join(home, 'Captures', school)
@@ -115,6 +120,17 @@ def dispatcher_process(file):
     mergeClips(school, name)
     #mainLog.write("[Done]: School: " + school + ' | Student: ' + name + '\n')
     print("[Done " + str(_currentfile) + "/" + str(filecount.value) + "]\nSchool: " + school + ' | Student: ' + name)
+
+def createFolder(path):
+    '''
+    Create folder if it does not already exist
+    '''
+    try:
+        if not exists(path):
+            makedirs(path)
+            return True
+    except OSError:
+        return False
 
 def mergeClips(school, student, verbose = False):
     #global mainLog
