@@ -1,6 +1,6 @@
 Video Booth Backend
 
-Uses:
+Requirements:
 - gphoto2
 - pydub
 - ffmpeg
