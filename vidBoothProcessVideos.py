@@ -63,7 +63,7 @@ def main():
     #######################
     #mainLog.write("Number of cpu : " + str(cpu_count()) + '\n')
     # create required folders if they do not exist
-    folders = ['Archive', 'Assets', 'Assets/Audio', 'Assets/IntroCards', 'Assets/OutroCards', 'Captures', 'Finals']
+    folders = ['Archive', 'Assets', 'Assets/Audio', 'Assets/IntroCards', 'Assets/OutroCards', 'Assets/Questions', 'Captures', 'Finals']
     for folder in folders:
         createFolder(folder)
 
