@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from argparse import ArgumentParser
 from multiprocessing import Pool, cpu_count, Value
 from time import sleep
@@ -8,6 +8,7 @@ from os.path import isfile, join, exists
 import sys
 import tarfile
 from datetime import date
+import subprocess
 
 verbose = False
 school = ""
@@ -46,7 +47,7 @@ def main():
         help='Display progress'
     )
     parser.add_argument(
-        '-school',
+        '-s',
         '--school',
         dest='school',
         default=False,
@@ -62,11 +63,6 @@ def main():
     # MAIN                #
     #######################
     #mainLog.write("Number of cpu : " + str(cpu_count()) + '\n')
-    # create required folders if they do not exist
-    folders = ['Archive', 'Assets', 'Assets/Audio', 'Assets/IntroCards', 'Assets/OutroCards', 'Assets/Questions', 'Captures', 'Finals']
-    for folder in folders:
-        createFolder(folder)
-
     if (verbose):
         print("Number of cpu : ", cpu_count())
     dir = join(home, 'Captures', school)
@@ -121,23 +117,30 @@ def dispatcher_process(file):
     #mainLog.write("[Done]: School: " + school + ' | Student: ' + name + '\n')
     print("[Done " + str(_currentfile) + "/" + str(filecount.value) + "]\nSchool: " + school + ' | Student: ' + name)
 
-def createFolder(path):
-    '''
-    Create folder if it does not already exist
-    '''
-    try:
-        if not exists(path):
-            makedirs(path)
-            return True
-    except OSError:
-        return False
+def get_volume(file):
+    file = file.replace(" ", "\\ ")
+    cmd = "ffmpeg -i {0} -filter:a volumedetect -f null /dev/null".format(file)
+    out = subprocess.run(cmd, shell=True, stderr=subprocess.PIPE).stderr.decode('utf-8')
+    spool = [o for o in out.split('\n') if "[Parsed_volumedetect" in o]
+    mean = max = 0.0
+    #print ("FILE: {0} \nOUT: {1} \nSPOOL: {2}".format(file, out, spool))
+    for item in spool:
+        if "mean_volume" in item:
+            mean = float(item.split(":")[-1].replace("dB", "").strip())
+            #print("FILE: {0} | MEAN: {1}".format(file, mean))
+        elif "max_volume" in item:
+            max = float(item.split(":")[-1].replace("dB", "").strip())
+            #print("FILE: {0} | MAX: {1}".format(file, max))
 
-def mergeClips(school, student, verbose = False):
+    return mean, max
+
+def mergeClips(school, student, verbose=False):
     #global mainLog
     global home
+    #global verbose
 
     # SET VARIABLES
-    dir = join(home, 'Finals', school) #The base of the video booth clips including school and student subfolders
+    dir = join(home, 'Finals', school, student) #The base of the video booth clips including school and student subfolders
     capturesHome = join(home, 'Captures', school, student)
 
     introHome = join(home, "Assets", "IntroCards")  #The folder intro cards can be found
@@ -150,8 +153,8 @@ def mergeClips(school, student, verbose = False):
     audioFile = audioFiles[0][0] #The selected audio file name
 
     #replace this with FFMPEG-NORMALIZE
-    clipVolumeMult = 4 #How much to boost/reduce the Video Booth audio, 1.0 remains the same
-    musicVolumeMult = 0.05 #How much to boost/reduce the music, 1.0 remains the same
+    clipVolumeMult = 1 #How much to boost/reduce the Video Booth audio, 1.0 remains the same
+    musicVolumeMult = 0.05 #0.05 #How much to boost/reduce the music, 1.0 remains the same
 
     fade_duration = 0.5 #in seconds
 
@@ -172,7 +175,16 @@ def mergeClips(school, student, verbose = False):
     log.write("Gathering Files\n")
     if (verbose):
         print ("Gathering files\n")
-    files = [f for f in listdir(capturesHome) if isfile(join(capturesHome, f))]
+    files = [f for f in listdir(capturesHome) if isfile(join(capturesHome, f)) and ".mp4" in f]
+
+    for f in range(len(files)):
+        #print(join(capturesHome, files[f]))
+        mean, max = get_volume(join(capturesHome, files[f]))
+        #clipVolumeMult.append(max/3) #divide by 3db
+        ratio = 4.65
+        db = (max * -1) / ratio
+        clipVolumeMult = db
+        #print ("\nFile: {0} \nMax: {1} \nclipVolumeMult: {2}".format(join(capturesHome, files[f]), max, clipVolumeMult))
 
     ### BEFORE ANYTHING ELSE, NORMALIZE THE CLIPS AND UPDATE FILE LOCATIONS/NAMES
 
